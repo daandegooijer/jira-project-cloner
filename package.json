@@ -1,0 +1,31 @@
+{
+  "name": "cloner",
+  "version": "1.0.0",
+  "description": "",
+  "main": ".eslintrc.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@forge/api": "^5.1.1",
+    "npkill": "^0.12.2"
+  },
+  "devDependencies": {
+    "@forge/bridge": "^4.5.0",
+    "@types/node": "^22.13.14",
+    "@types/react": "^19.0.12",
+    "@typescript-eslint/eslint-plugin": "^8.28.0",
+    "@typescript-eslint/parser": "^8.28.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.23.0",
+    "eslint-plugin-react": "^7.37.4",
+    "postcss": "^8.5.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.3"
+  }
+}
