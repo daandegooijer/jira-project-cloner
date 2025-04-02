@@ -1,5 +1,5 @@
 //@ts-nocheck
-import React, { useState, ChangeEvent } from "react";
+import React, { useState, ChangeEvent, useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import { invoke } from "@forge/bridge";
 
@@ -9,24 +9,36 @@ export default function App() {
   const [targetProjectName, setTargetProjectName] = useState<string>("");
   const [isCloning, setIsCloning] = useState<boolean>(false);
   const [log, setLog] = useState<string>("");
+  const [dots, setDots] = useState<string>(".");
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isCloning) {
+      interval = setInterval(() => {
+        setDots((prev) => (prev.length >= 3 ? "." : prev + "."));
+      }, 500);
+    } else {
+      setDots(".");
+    }
+    return () => clearInterval(interval);
+  }, [isCloning]);
 
   const handleClone = async () => {
     setIsCloning(true);
-    setLog("⏳ Cloning in progress...");
+    setLog("⏳ Cloning started...");
 
     try {
-      const result = await invoke("startClone", {
-        payload: {
-          sourceProject,
-          targetProjectKey,
-          targetProjectName,
-        },
+      const res = await invoke("startClone", {
+        sourceProject,
+        targetProjectKey,
+        targetProjectName,
       });
-      setLog(result.message);
+      setLog(res.message);
     } catch (err) {
       console.error(err);
-      setLog("❌ Something went wrong. Check the console.");
+      setLog(`❌ Error: ${err.message}`);
     }
+
     setIsCloning(false);
   };
 
@@ -54,7 +66,7 @@ export default function App() {
           onChange={(e: ChangeEvent<HTMLInputElement>) =>
             setSourceProject(e.target.value)
           }
-          placeholder="e.g., FNDTNTMPLT"
+          placeholder="e.g., MENUKAART"
         />
       </div>
 
@@ -128,6 +140,7 @@ export default function App() {
         }}
       >
         {log}
+        {isCloning ? dots : null}
       </pre>
     </div>
   );

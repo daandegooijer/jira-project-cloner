@@ -1,3 +1,8 @@
+app:
+  id: ari:cloud:ecosystem::app/b17e8fc7-e3a5-489e-a7bd-21363b72f279
+  runtime:
+    name: nodejs20.x
+
 modules:
   jira:globalPage:
     - key: project-cloner-ui
@@ -24,8 +29,9 @@ permissions:
     - read:jira-user
     - manage:jira-project
     - manage:jira-configuration
+    - read:board-scope.admin:jira-software
 
-app:
-  id: ari:cloud:ecosystem::app/b17e8fc7-e3a5-489e-a7bd-21363b72f279
-  runtime:
-    name: nodejs20.x
+  external:
+    fetch:
+      backend:
+        - "https://ef2dev.atlassian.net"

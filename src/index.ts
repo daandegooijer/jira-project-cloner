@@ -1,84 +1,98 @@
-// //@ts-nocheck
 import api, { route } from "@forge/api";
-import { cloneIssues } from "./cloneIssues";
-import { cloneSprints } from "./cloneSprints";
-import { applyWorkflowScheme } from "./applyWorkflow";
+import { applyWorkflow } from "./handlers/applyWorkfow";
+import { createProject } from "./handlers/createProject";
+import { cloneSprints } from "./handlers/cloneSprints";
+import { cloneIssues } from "./handlers/cloneIssues";
+import { createBoard } from "./handlers/createBoard";
 
-export async function startClone(event: any) {
-  const payload = event?.call?.payload?.payload || {};
+export async function startClone(call: any) {
+  const { sourceProject, targetProjectKey, targetProjectName } =
+    call.call?.payload;
 
-  const { sourceProject, targetProjectKey, targetProjectName } = payload;
+  let projectCreated = false;
+  const payload = {
+    sourceProject,
+    targetProjectKey,
+    targetProjectName,
+    targetProjectId: null,
+    targetBoardId: null,
+    sprintMap: "",
+  };
 
-  if (!sourceProject || !targetProjectKey || !targetProjectName) {
-    return { message: "❌ Missing fields in payload." };
-  }
-
+  // 1. Create Project
   try {
-    const myselfRes = await api.asApp().requestJira(route`/rest/api/3/myself`);
-    const myself = await myselfRes.json();
+    const project = await createProject(payload);
 
-    if (!myself.accountId) {
-      return { message: "❌ Failed to fetch user account ID." };
-    }
+    projectCreated = true;
 
-    const projectRes = await api
-      .asApp()
-      .requestJira(route`/rest/api/3/project`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          key: targetProjectKey,
-          name: targetProjectName,
-          projectTypeKey: "software",
-          projectTemplateKey:
-            "com.pyxis.greenhopper.jira:gh-simplified-scrum-classic",
-          leadAccountId: myself.accountId,
-        }),
-      });
+    console.info(`${project.message} (ID: ${project.projectId})`);
 
-    if (!projectRes.ok) {
-      const error = await projectRes.text();
-      return { message: `❌ Failed to create project: ${error}` };
-    }
+    payload["targetProjectId"] = project.projectId;
 
-    const projectData = await projectRes.json();
+    const board = await createBoard(payload);
 
-    // 🔍 Fetch workflow scheme from source project
-    const schemeRes = await api
-      .asApp()
-      .requestJira(
-        route`/rest/api/3/workflowscheme/project?projectIdOrKey=${sourceProject}`
-      );
-    const schemeData = await schemeRes.json();
-    const workflowSchemeId = schemeData?.values?.[0]?.workflowScheme?.id;
+    payload["targetBoardId"] = board.boardId;
 
-    let applyWorkflowResult = { message: "⚠️ No workflow scheme applied." };
-    if (workflowSchemeId) {
-      applyWorkflowResult = await applyWorkflowScheme(
-        projectData.id,
-        parseInt(workflowSchemeId)
+    if (!project.projectId || !board.boardId) {
+      throw new Error(
+        `Failed to create project or board. Project ID: ${project.projectId}, Board ID: ${board.boardId}`
       );
     }
 
-    // Clone sprints and issues
-    const cloneSprintResult = await cloneSprints(
-      sourceProject,
-      targetProjectKey
-    );
-    const cloneIssueResult = await cloneIssues(sourceProject, targetProjectKey);
+    const workflow = await applyWorkflow(payload);
+
+    console.info(`${workflow.message}`);
+
+    const clonedSprints = await cloneSprints(payload);
+
+    //@ts-ignore
+    payload["sprintMap"] = clonedSprints.sprintMap;
+
+    console.info(`${clonedSprints.message}`);
+
+    const clonedIssues = await cloneIssues(payload);
+
+    console.info(`${clonedIssues.message}`);
 
     return {
       message: [
-        `✅ Project '${targetProjectName}' created successfully with key '${targetProjectKey}'!`,
-        applyWorkflowResult.message,
-        cloneSprintResult.message,
-        cloneIssueResult.message,
-      ].join("\n"),
+        project.message,
+        workflow.message,
+        clonedSprints.message,
+        clonedIssues.message,
+        "🎉 Full cloning done!",
+      ].join("/n"),
     };
   } catch (err: any) {
-    console.error(err);
-    return { message: `❌ Unexpected error: ${err.message}` };
+    console.error("❌ Cloning failed:", err.message);
+
+    // 🔥 Try to delete project (and trash) if it was created
+    if (projectCreated) {
+      try {
+        await deleteProject(targetProjectKey);
+        console.warn("🗑️ Project cleanup successful.");
+      } catch (cleanupErr: any) {
+        console.error("⚠️ Cleanup failed:", cleanupErr.message);
+      }
+    }
+
+    return {
+      message: `❌ Cloning failed: ${err.message}`,
+    };
   }
+}
+
+export async function deleteProject(projectKey: any) {
+  const res = await api
+    .asApp()
+    .requestJira(route`/rest/api/3/project/${projectKey}`, {
+      method: "DELETE",
+    });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Failed to delete project: ${err}`);
+  }
+
+  return { message: `Project ${projectKey} deleted.` };
 }
