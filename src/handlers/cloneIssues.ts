@@ -92,7 +92,8 @@ async function runInBatches<T>(
   for (let i = 0; i < items.length; i += batchSize) {
     const chunk = items.slice(i, i + batchSize);
     await Promise.all(chunk.map(handler));
-    await new Promise((r) => setTimeout(r, 300));
+
+    await new Promise((r) => setTimeout(r, 50));
   }
 }
 

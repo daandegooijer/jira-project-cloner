@@ -60,7 +60,7 @@ export async function startClone(call: any) {
         workflow.message,
         clonedSprints.message,
         clonedIssues.message,
-        "🎉 Full cloning done!",
+        "🎉 Full cloning done! Please setup the work columns manually for the project.",
       ].join("/n"),
     };
   } catch (err: any) {
